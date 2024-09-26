@@ -1,6 +1,6 @@
 import { DB, readDB, writeDB } from "@lib/DB";
 import { checkToken } from "@lib/checkToken";
-import { Database } from "@lib/types";
+import { Database, Payload } from "@lib/types";
 import { nanoid } from "nanoid";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -65,28 +65,50 @@ export const POST = async (request: NextRequest) => {
 export const DELETE = async (request: NextRequest) => {
   const payload = checkToken();
 
-  // return NextResponse.json(
-  //   {
-  //     ok: false,
-  //     message: "Invalid token",
-  //   },
-  //   { status: 401 }
-  // );
-
+  if(!payload) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message: "Invalid token",
+      },
+      { status: 401 }
+    );
+  }
+  
+  const { role } = <Payload>payload;
+  const body = await request.json();
+  const { messageId } = body;
   readDB();
-
-  // return NextResponse.json(
-  //   {
-  //     ok: false,
-  //     message: "Message is not found",
-  //   },
-  //   { status: 404 }
-  // );
-
+  const foundMessage = (<Database>DB).messages.find((x) => x.messageId === messageId);
+  if(!foundMessage)
+  {  
+    return NextResponse.json(
+      {
+        ok: false,
+        message: "Message is not found",
+      },
+      { status: 404 }
+    );
+  }
+  if(role === "SUPER ADMIN"){
+    return NextResponse.json({
+      ok: true,
+      message: "Message has been deleted",
+    });
+  }
+  //delete message
+  const index = (<Database>DB).messages.findIndex((x) => x.messageId === messageId);
+  if(index === -1){
+    return NextResponse.json(
+      {
+        ok: false,
+        message: "Message is not found",
+      },
+      { status: 404 }
+    );
+  }
+  const foundMessageIndex = (<Database>DB).messages.findIndex((x) => x.messageId === messageId);
+  (<Database>DB).messages.splice(foundMessageIndex, 1);
   writeDB();
 
-  return NextResponse.json({
-    ok: true,
-    message: "Message has been deleted",
-  });
 };
